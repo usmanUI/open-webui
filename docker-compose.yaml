@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   ollama:
     volumes:
@@ -8,27 +10,33 @@ services:
     restart: unless-stopped
     image: ollama/ollama:${OLLAMA_DOCKER_TAG-latest}
 
-  open-webui:
-    build:
-      context: .
-      args:
-        OLLAMA_BASE_URL: '/ollama'
-      dockerfile: Dockerfile
-    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
-    container_name: open-webui
+  backend:
+    build: .
+    container_name: backend
     volumes:
-      - open-webui:/app/backend/data
-    depends_on:
-      - ollama
-    ports:
-      - ${OPEN_WEBUI_PORT-3000}:8080
+      - ./backend:/app/backend
     environment:
-      - 'OLLAMA_BASE_URL=http://ollama:11434'
-      - 'WEBUI_SECRET_KEY='
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      - USE_CUDA=false
+      - USE_OLLAMA=false
+      - USE_CUDA_VER=cu121
+      - USE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+      - PORT=8080
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  frontend:
+    build: .
+    container_name: frontend
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - VITE_BACKEND_URL=http://localhost:8080
     restart: unless-stopped
 
 volumes:
   ollama: {}
-  open-webui: {}
